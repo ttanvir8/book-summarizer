@@ -1,5 +1,4 @@
 # Mine
-frontend/
 views.py
 /media/book_pdfs/
 *.pdf
@@ -74,3 +73,30 @@ ehthumbs.db
 
 # Other temporary files
 *.lock
+
+
+###### Frontend exclusion
+node_modules
+build
+.DS_Store
+*.log
+.env
+.env.local
+.env.development
+.env.development.local
+.env.production
+.env.production.local
+.env.test
+.env.test.local
+
+# If using yarn
+yarn-error.log
+
+# IDE specific files
+.idea
+.vscode
+
+# Temporary files and directories
+tmp
+temp
+**/Thumbs.db
