@@ -44,9 +44,14 @@ const UploadBook: React.FC = () => {
       return;
     }
     
+    // Initialize with a no-op timer that we'll replace later
+    let progressInterval: NodeJS.Timeout = setTimeout(() => {}, 0);
+    clearTimeout(progressInterval); // Clear the initial timeout immediately
+    
     try {
       setUploading(true);
       setUploadProgress(0);
+      setError(null); // Clear any previous errors
       
       // Create form data
       const formData = new FormData();
@@ -56,7 +61,7 @@ const UploadBook: React.FC = () => {
       formData.append('pdf_file', file);
       
       // Simulate upload progress (in a real app, you'd use axios progress events)
-      const progressInterval = setInterval(() => {
+      progressInterval = setInterval(() => {
         setUploadProgress(prev => {
           if (prev >= 95) {
             clearInterval(progressInterval);
@@ -66,20 +71,30 @@ const UploadBook: React.FC = () => {
         });
       }, 200);
       
+      console.log('Uploading book with title:', title);
       const uploadedBook = await uploadBook(formData);
+      console.log('Book uploaded successfully:', uploadedBook);
       
       clearInterval(progressInterval);
       setUploadProgress(100);
       
       // Navigate to the book detail page
       setTimeout(() => {
-        navigate(`/books/${uploadedBook.id}`);
+        if (uploadedBook && uploadedBook.id) {
+          navigate(`/books/${uploadedBook.id}`);
+        } else {
+          // If for some reason the id is missing, just navigate to the books list
+          setError('Book uploaded but unable to navigate to details page.');
+          setTimeout(() => navigate('/'), 3000);
+        }
       }, 1000);
       
-    } catch (err) {
-      setError('Failed to upload book. Please try again later.');
+    } catch (err: any) {
+      clearInterval(progressInterval); // Clear the interval to prevent memory leaks
+      setError(`Failed to upload book: ${err.message || 'Unknown error occurred'}`);
       console.error('Error uploading book:', err);
       setUploading(false);
+      setUploadProgress(0);
     }
   };
 

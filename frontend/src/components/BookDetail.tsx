@@ -253,7 +253,7 @@ const BookDetail: React.FC = () => {
         summary_text: selectedChapter.summary,
         compression_ratio: selectedChapter.compression_ratio,
         prompt_used: 'Default prompt',
-        created_at: ''
+        created_at: new Date().toISOString() // Use current date as fallback
       };
     }
     

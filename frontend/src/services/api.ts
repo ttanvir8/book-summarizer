@@ -5,8 +5,11 @@ const API_URL = 'http://127.0.0.1:8000/api';
 export interface Book {
   id: number;
   title: string;
-  created_at: string;
-  updated_at: string;
+  pdf_file: string;
+  processed_date: string;
+  total_pages: number | null;
+  total_chapters: number | null;
+  chapters?: Chapter[];
 }
 
 export interface ChapterSummary {
@@ -70,12 +73,12 @@ export interface Chapter {
   chapter_number: number;
   title: string;
   text: string;
-  content: string;
-  summary: string;
+  summary: string | null;
+  start_page: number;
+  end_page: number;
   page_count: number;
+  word_count: number;
   compression_ratio: number | null;
-  created_at: string;
-  updated_at: string;
   summaries: ChapterSummary[];
   active_summary: ChapterSummary | null;
 }
@@ -92,12 +95,18 @@ export const getBook = async (id: number): Promise<Book> => {
 };
 
 export const uploadBook = async (formData: FormData): Promise<Book> => {
-  const response = await axios.post(`${API_URL}/books/`, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
-  return response.data;
+  try {
+    const response = await axios.post(`${API_URL}/books/`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    console.log('Upload response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error in uploadBook:', error);
+    throw error;
+  }
 };
 
 export const deleteBook = async (id: number): Promise<void> => {

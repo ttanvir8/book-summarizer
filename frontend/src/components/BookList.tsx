@@ -91,7 +91,7 @@ const BookList: React.FC = () => {
                 <div className="card-body">
                   <h5 className="card-title">{book.title}</h5>
                   <p className="card-text">
-                    <small className="text-muted">Added on: {formatDate(book.created_at)}</small>
+                    <small className="text-muted">Added on: {formatDate(book.processed_date)}</small>
                   </p>
                 </div>
                 <div className="card-footer bg-transparent border-top-0">
