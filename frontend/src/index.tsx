@@ -7,6 +7,11 @@ import './index.css';
 const container = document.getElementById('root');
 const root = createRoot(container as HTMLElement);
 
+window.addEventListener('load', () => {
+  sessionStorage.clear();
+  window.sessionStorage.setItem('isLoaded', 'true');
+});
+
 root.render(
   <React.StrictMode>
     <BrowserRouter>

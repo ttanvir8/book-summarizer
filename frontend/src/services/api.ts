@@ -173,7 +173,12 @@ export const summarizeChapter = async (bookId: number, chapterNumber: number, pr
     }
   }
   
-  const response = await axios.post(`${API_URL}/chapters/book/${bookId}/chapter/${chapterNumber}/summarize/`, requestData);
+  // Add timestamp to prevent caching
+  const timestamp = new Date().getTime();
+  const response = await axios.post(
+    `${API_URL}/chapters/book/${bookId}/chapter/${chapterNumber}/summarize/?_=${timestamp}`, 
+    requestData
+  );
   console.log('API response for summarizeChapter:', response.data);
   return response.data;
 };
@@ -189,8 +194,10 @@ export const regenerateSummary = async (bookId: number, chapterNumber: number, p
     }
   }
   
+  // Add timestamp to prevent caching
+  const timestamp = new Date().getTime();
   const response = await axios.post(
-    `${API_URL}/chapters/book/${bookId}/chapter/${chapterNumber}/regenerate-summary/`, 
+    `${API_URL}/chapters/book/${bookId}/chapter/${chapterNumber}/regenerate-summary/?_=${timestamp}`, 
     requestData
   );
   console.log('API response for regenerateSummary:', response.data);
@@ -198,7 +205,9 @@ export const regenerateSummary = async (bookId: number, chapterNumber: number, p
 };
 
 export const getChapterSummaries = async (chapterId: number): Promise<ChapterSummary[]> => {
-  const response = await axios.get(`${API_URL}/summaries/chapter/${chapterId}/`);
+  // Add timestamp to prevent caching
+  const timestamp = new Date().getTime();
+  const response = await axios.get(`${API_URL}/summaries/chapter/${chapterId}/?_=${timestamp}`);
   console.log('API response for getChapterSummaries:', response.data);
   return response.data;
 };

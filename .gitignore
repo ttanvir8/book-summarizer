@@ -2,6 +2,7 @@
 views.py
 /media/book_pdfs/
 *.pdf
+auth_settings.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

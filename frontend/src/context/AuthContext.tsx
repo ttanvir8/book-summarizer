@@ -17,7 +17,7 @@ interface AuthContextType {
   token: string | null;
   isAuthenticated: boolean;
   loading: boolean;
-  login: (token: string) => void;
+  login: (token: string) => Promise<boolean>;
   logout: () => void;
   setAuthToken: (token: string | null) => void;
 }
@@ -28,7 +28,7 @@ const AuthContext = createContext<AuthContextType>({
   token: null,
   isAuthenticated: false,
   loading: true,
-  login: () => {},
+  login: () => Promise.resolve(false),
   logout: () => {},
   setAuthToken: () => {},
 });
@@ -59,23 +59,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   // Login function
-  const login = (token: string) => {
-    setToken(token);
-    setAuthToken(token);
-    
+  const login = async (token: string): Promise<boolean> => {
     try {
-      // Try to decode token to get user info if JWT
-      // For simple token auth, you might need to make an API call to get user data
-      // For this example, we'll just create a basic user object
+      setToken(token);
+      setAuthToken(token);
+      
+      // Create a user object - in a real app, you'd likely fetch this from an API
       const userData: User = {
         id: 1,
         email: 'user@example.com',
         username: 'user',
       };
-      setUser(userData);
       
+      setUser(userData);
+      return true;
     } catch (error) {
-      console.error('Error decoding token:', error);
+      console.error('Error during login:', error);
+      return false;
     }
   };
 

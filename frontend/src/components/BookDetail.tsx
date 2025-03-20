@@ -60,7 +60,9 @@ const BookDetail: React.FC = () => {
         setBook(bookData);
         
         const allChapters = await getChapters();
-        const bookChapters = allChapters.filter(chapter => chapter.book === parseInt(bookId));
+        const bookChapters = allChapters
+          .filter(chapter => chapter.book === parseInt(bookId))
+          .sort((a, b) => a.chapter_number - b.chapter_number); // Sort chapters by chapter_number
         setChapters(bookChapters);
         
         // Set the first chapter as selected by default
@@ -82,43 +84,57 @@ const BookDetail: React.FC = () => {
 
   // Load summaries when a chapter is selected
   useEffect(() => {
-    const fetchSummaries = async () => {
-      if (selectedChapter) {
-        try {
-          // Check if the chapter has summaries via the API
-          const summaries = await getChapterSummaries(selectedChapter.id);
-          setAvailableSummaries(summaries);
-          
-          // Find index of active summary
-          if (selectedChapter.active_summary) {
-            const activeIndex = summaries.findIndex(s => s.id === selectedChapter.active_summary?.id);
-            setCurrentSummaryIndex(activeIndex >= 0 ? activeIndex : 0);
-          } else {
-            setCurrentSummaryIndex(0);
-          }
-        } catch (err) {
-          console.error('Error fetching summaries:', err);
-          // If API fails, try to use the embedded summaries from the chapter object
-          if (selectedChapter.summaries?.length > 0) {
-            setAvailableSummaries(selectedChapter.summaries);
-            
-            // Find index of active summary
-            if (selectedChapter.active_summary) {
-              const activeIndex = selectedChapter.summaries.findIndex(s => s.id === selectedChapter.active_summary?.id);
-              setCurrentSummaryIndex(activeIndex >= 0 ? activeIndex : 0);
-            } else {
-              setCurrentSummaryIndex(0);
-            }
-          } else {
-            setAvailableSummaries([]);
-            setCurrentSummaryIndex(0);
-          }
-        }
-      }
-    };
-    
-    fetchSummaries();
+    fetchSummaries(selectedChapter?.id);
   }, [selectedChapter]);
+
+  // Function to fetch summaries for a chapter
+  const fetchSummaries = async (chapterId?: number) => {
+    if (!chapterId) return;
+    
+    try {
+      // Check if the chapter has summaries via the API
+      const summaries = await getChapterSummaries(chapterId);
+      console.log('Fetched summaries:', summaries);
+      setAvailableSummaries(summaries);
+      
+      // Find index of active summary
+      const chapter = chapters.find(c => c.id === chapterId);
+      if (chapter?.active_summary) {
+        const activeIndex = summaries.findIndex(s => s.id === chapter.active_summary?.id);
+        setCurrentSummaryIndex(activeIndex >= 0 ? activeIndex : 0);
+      } else {
+        setCurrentSummaryIndex(0);
+      }
+    } catch (err) {
+      console.error('Error fetching summaries:', err);
+      
+      // If API fails, try to use the embedded summaries from the chapter object
+      const chapter = chapters.find(c => c.id === chapterId);
+      if (chapter && chapter.summaries && chapter.summaries.length > 0) {
+        setAvailableSummaries(chapter.summaries);
+        
+        // Find index of active summary
+        if (chapter.active_summary) {
+          const activeIndex = chapter.summaries.findIndex(s => s.id === chapter.active_summary?.id);
+          setCurrentSummaryIndex(activeIndex >= 0 ? activeIndex : 0);
+        } else {
+          setCurrentSummaryIndex(0);
+        }
+      } else {
+        setAvailableSummaries([]);
+        setCurrentSummaryIndex(0);
+      }
+    }
+  };
+
+  // Debug useEffect to log when availableSummaries changes
+  useEffect(() => {
+    if (availableSummaries.length > 0) {
+      console.log('Available summaries updated:', availableSummaries);
+      console.log('Current summary index:', currentSummaryIndex);
+      console.log('Current summary:', availableSummaries[currentSummaryIndex]);
+    }
+  }, [availableSummaries, currentSummaryIndex]);
 
   // Debug useEffect to log compression ratio when selectedChapter changes
   useEffect(() => {
@@ -129,6 +145,19 @@ const BookDetail: React.FC = () => {
       console.log('Current summary index:', currentSummaryIndex);
     }
   }, [selectedChapter, availableSummaries, currentSummaryIndex]);
+
+  // Add this new useEffect to handle summary updates
+  useEffect(() => {
+    if (selectedChapter?.summaries) {
+      setAvailableSummaries(selectedChapter.summaries);
+      if (selectedChapter.active_summary) {
+        const activeIndex = selectedChapter.summaries.findIndex(s => s.id === selectedChapter.active_summary?.id);
+        setCurrentSummaryIndex(activeIndex >= 0 ? activeIndex : 0);
+      } else {
+        setCurrentSummaryIndex(0);
+      }
+    }
+  }, [selectedChapter]);
 
   const handleSummarize = async (chapterNumber: number) => {
     if (!bookId) return;
@@ -141,20 +170,26 @@ const BookDetail: React.FC = () => {
       console.log('API response from summarize:', updatedChapter);
       
       // Update chapters state with new data
-      setChapters(chapters.map(chapter => 
+      const updatedChapters = chapters.map(chapter => 
         chapter.id === updatedChapter.id ? updatedChapter : chapter
-      ));
+      );
+      setChapters(updatedChapters);
       
       // Update selectedChapter if this is the one that was summarized
       if (selectedChapter?.id === updatedChapter.id) {
         console.log('Updating selected chapter with new data including compression ratio:', updatedChapter.compression_ratio);
+        
+        // Immediately update available summaries with the new data
+        if (updatedChapter.summaries && updatedChapter.summaries.length > 0) {
+          setAvailableSummaries(updatedChapter.summaries);
+          setCurrentSummaryIndex(0); // Set to the first (newest) summary
+        }
+        
+        // Update the selected chapter
         setSelectedChapter(updatedChapter);
-      }
-      
-      // Refresh summaries for this chapter
-      if (updatedChapter.summaries?.length > 0) {
-        setAvailableSummaries(updatedChapter.summaries);
-        setCurrentSummaryIndex(0); // Set to the first (newest) summary
+      } else {
+        // If we're summarizing a different chapter, fetch the latest summaries for the current chapter
+        await fetchSummaries(selectedChapter?.id);
       }
     } catch (err) {
       setError('Failed to generate summary. Please try again later.');
@@ -178,13 +213,14 @@ const BookDetail: React.FC = () => {
       
       // Update selectedChapter if this is the one that was regenerated
       if (selectedChapter?.id === updatedChapter.id) {
+        // Directly update the availableSummaries with the new summary data from the API response
+        if (updatedChapter.summaries && updatedChapter.summaries.length > 0) {
+          setAvailableSummaries(updatedChapter.summaries);
+          setCurrentSummaryIndex(0); // Set to the first (newest) summary
+        }
+        
+        // Then update the selected chapter
         setSelectedChapter(updatedChapter);
-      }
-      
-      // Refresh summaries for this chapter
-      if (updatedChapter.summaries?.length > 0) {
-        setAvailableSummaries(updatedChapter.summaries);
-        setCurrentSummaryIndex(0); // Set to the first (newest) summary
       }
     } catch (err) {
       setError('Failed to regenerate summary. Please try again later.');
@@ -216,7 +252,10 @@ const BookDetail: React.FC = () => {
       // Update selected chapter
       setSelectedChapter(updatedChapter);
       
-      // Update current index
+      // Fetch the latest summaries to ensure everything is in sync
+      await fetchSummaries(updatedChapter.id);
+      
+      // Update current index directly as well for immediate feedback
       setCurrentSummaryIndex(newIndex);
     } catch (err) {
       setError('Failed to switch summary. Please try again later.');
@@ -376,7 +415,6 @@ const BookDetail: React.FC = () => {
           </div>
         </div>
       )}
-
       {/* Main content */}
       <div className="flex-grow-1 d-flex" style={{ minHeight: 0 }}>
         {isSidebarCollapsed && (
@@ -575,4 +613,4 @@ const BookDetail: React.FC = () => {
   );
 };
 
-export default BookDetail; 
+export default BookDetail;
