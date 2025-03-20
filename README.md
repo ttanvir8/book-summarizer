@@ -11,7 +11,8 @@ Working Features:
     * Provides definitions and explanations of complex terms or concepts within the text.
     * Offers background information or related context to enhance comprehension.
     * Connects ideas and characters across different parts of the book.
-TO DO:
+
+## TO DO:
 * **Interactive Question Answering:**
     * Allows users to ask questions about the book and receive direct, contextually relevant answers.
     * Facilitates deeper understanding and exploration of specific plot points or character motivations.
