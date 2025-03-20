@@ -2,6 +2,26 @@ import axios from 'axios';
 
 const API_URL = 'http://127.0.0.1:8000/api';
 
+// Set up axios defaults for authentication
+const token = localStorage.getItem('token');
+if (token) {
+  axios.defaults.headers.common['Authorization'] = `Token ${token}`;
+}
+
+// Initialize axios interceptors
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // If the token is invalid or expired, log out the user
+      localStorage.removeItem('token');
+      delete axios.defaults.headers.common['Authorization'];
+      window.location.href = '/';
+    }
+    return Promise.reject(error);
+  }
+);
+
 export interface Book {
   id: number;
   title: string;
@@ -82,6 +102,23 @@ export interface Chapter {
   summaries: ChapterSummary[];
   active_summary: ChapterSummary | null;
 }
+
+// Authentication API calls
+export const loginWithGoogle = () => {
+  window.location.href = 'http://localhost:8000/accounts/google/login/';
+};
+
+export const getAuthToken = async () => {
+  try {
+    const response = await axios.post('http://localhost:8000/auth/token/', {}, {
+      withCredentials: true
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error getting auth token:', error);
+    throw error;
+  }
+};
 
 // Book API calls
 export const getAllBooks = async (): Promise<Book[]> => {

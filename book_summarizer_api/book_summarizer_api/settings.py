@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import os
 
 from pathlib import Path
+from .auth_settings import *
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -29,6 +30,29 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'book_summarizer',
+        'USER': 'tanvirkhan',
+        'PASSWORD': '',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
+
+# Original PostgreSQL configuration (commented out temporarily)
+# DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.postgresql',
+#        'NAME': 'book_summarizer',
+#        'USER': 'tanvirkhan',
+#        'PASSWORD': '',
+#        'HOST': 'localhost',
+#        'PORT': '5432',
+#    }
+# }
+
 
 # Application definition
 
@@ -39,9 +63,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles', # <-- Only ONE of this line should exist
+    'django.contrib.sites',  # Required for allauth
     'rest_framework',
+    'rest_framework.authtoken',  # Add Token authentication
     'corsheaders',  # Add cors headers app
     'booksummary',
+    'allauth',  # OAuth provider
+    'allauth.account',  # For account handling
+    'allauth.socialaccount',  # For social authentication
+    'allauth.socialaccount.providers.google',  # Google provider
+    'dj_rest_auth',  # REST authentication
+    'dj_rest_auth.registration',  # REST registration
 ]
 
 MIDDLEWARE = [
@@ -53,6 +85,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "allauth.account.middleware.AccountMiddleware",  # Add allauth middleware
 ]
 
 # CORS settings
@@ -81,17 +114,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "book_summarizer_api.wsgi.application"
-
-
-# Database
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
-
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
-}
 
 
 # Password validation
@@ -131,3 +153,54 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# REST Framework settings
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
+
+# For django-allauth
+SITE_ID = 1
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+LOGIN_REDIRECT_URL = '/auth/callback/'
+# Google OAuth Configuration
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id': GOOGLE_AUTH_CLIENT_ID,
+            'secret': GOOGLE_AUTH_CLIENT_SECRET,
+            'key': '',
+        },
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        }
+    }
+}
+
+# AllAuth settings
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_VERIFICATION = 'none'  # Change to 'mandatory' in production
+
+# Rest-Auth settings
+REST_AUTH = {
+    'USE_JWT': True,
+    'JWT_AUTH_COOKIE': 'book-summarizer-auth',
+    'JWT_AUTH_REFRESH_COOKIE': 'book-summarizer-refresh',
+}

@@ -5,6 +5,7 @@ from django.db import models
 
 from django.db import models
 from datetime import datetime
+from django.contrib.auth.models import User
 
 class Book(models.Model):
     title = models.CharField(max_length=255)
@@ -12,6 +13,7 @@ class Book(models.Model):
     processed_date = models.DateTimeField(default=datetime.now)
     total_pages = models.IntegerField(null=True, blank=True)
     total_chapters = models.IntegerField(null=True, blank=True)
+    owner = models.ForeignKey(User, related_name='books', on_delete=models.CASCADE, null=True)
 
     def __str__(self):
         return self.title

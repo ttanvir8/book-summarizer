@@ -1,39 +1,71 @@
 import React from 'react';
-import { Routes, Route, Link } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import BookList from './components/BookList';
 import BookDetail from './components/BookDetail';
 import UploadBook from './components/UploadBook';
+import LandingPage from './components/LandingPage';
+import Navbar from './components/Navbar';
+import OAuthCallback from './components/OAuthCallback';
+import ProtectedRoute from './components/ProtectedRoute';
 
-const App: React.FC = () => {
+const HomeRoute: React.FC = () => {
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="d-flex justify-content-center mt-5">
+        <div className="spinner-border" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
+  }
+  
+  return isAuthenticated ? <Navigate to="/books" /> : <LandingPage />;
+};
+
+const AppContent: React.FC = () => {
   return (
     <div>
-      <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div className="container">
-          <Link className="navbar-brand" to="/">Book Summarizer</Link>
-          <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span className="navbar-toggler-icon"></span>
-          </button>
-          <div className="collapse navbar-collapse" id="navbarNav">
-            <ul className="navbar-nav">
-              <li className="nav-item">
-                <Link className="nav-link" to="/">Home</Link>
-              </li>
-              <li className="nav-item">
-                <Link className="nav-link" to="/upload">Upload Book</Link>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </nav>
-
+      <Navbar />
+      
       <div className="container mt-4">
         <Routes>
-          <Route path="/" element={<BookList />} />
-          <Route path="/books/:bookId" element={<BookDetail />} />
-          <Route path="/upload" element={<UploadBook />} />
+          {/* Public routes */}
+          <Route path="/" element={<HomeRoute />} />
+          <Route path="/auth/callback" element={<OAuthCallback />} />
+          
+          {/* Protected routes */}
+          <Route path="/books" element={
+            <ProtectedRoute>
+              <BookList />
+            </ProtectedRoute>
+          } />
+          <Route path="/books/:bookId" element={
+            <ProtectedRoute>
+              <BookDetail />
+            </ProtectedRoute>
+          } />
+          <Route path="/upload" element={
+            <ProtectedRoute>
+              <UploadBook />
+            </ProtectedRoute>
+          } />
+          
+          {/* Fallback route */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 };
 
