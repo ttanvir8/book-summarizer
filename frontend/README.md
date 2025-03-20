@@ -38,6 +38,30 @@ This frontend integrates with the Book Summarizer API which should be running on
 - `/api/chapters/` - For listing chapters
 - `/api/chapters/book/{book_pk}/chapter/{chapter_number}/summarize/` - For generating summaries
 
+## Authentication
+
+This application uses Google OAuth for authentication. Here's how it works:
+
+1. Users are presented with a landing page when not authenticated
+2. After clicking "Sign in with Google", they are redirected to Google's authentication page
+3. Upon successful authentication, they are redirected back to the application with a token
+4. This token is used for all subsequent API requests
+5. Users can only access their own books and summaries
+
+### Development Setup
+
+For local development, ensure the backend server is running at http://localhost:8000 and has been properly configured with Google OAuth credentials:
+
+- Client ID: 866184954339-ajnk71sobbsomlodkaiq8vthuk42c187.apps.googleusercontent.com
+- Callback URL: http://localhost:8000/accounts/google/login/callback/
+
+### Authentication Flow Pages
+
+- **Landing Page** (`/`): Shows application information and login button for non-authenticated users
+- **Books Page** (`/books`): Shows the user's books (requires authentication)
+- **Upload Page** (`/upload`): Allows users to upload new books (requires authentication)
+- **Book Detail Page** (`/books/:id`): Shows book details and chapters (requires authentication)
+
 ## Technologies Used
 
 - React 18
