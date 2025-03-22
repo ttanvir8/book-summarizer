@@ -296,6 +296,15 @@ const BookDetail: React.FC = () => {
   const handleCycleSummary = async (direction: 'next' | 'prev') => {
     if (!selectedChapter || availableSummaries.length <= 1) return;
     
+    // Store chapter ID in a local variable to ensure it doesn't get lost
+    const chapterId = selectedChapter.id;
+    
+    // Check if chapter ID is valid before proceeding
+    if (!chapterId) {
+      setError('Cannot update summary: Invalid chapter ID');
+      return;
+    }
+    
     let newIndex: number;
     if (direction === 'next') {
       newIndex = (currentSummaryIndex + 1) % availableSummaries.length;
@@ -309,16 +318,29 @@ const BookDetail: React.FC = () => {
       // Update current index directly first for immediate feedback
       setCurrentSummaryIndex(newIndex);
       
-      // Then make the API call to set active summary
-      const updatedChapter = await setActiveSummary(selectedChapter.id, summaryId);
+      // Then make the API call to set active summary with the local chapterId variable
+      const updatedChapter = await setActiveSummary(chapterId, summaryId);
       
-      // Update chapters state with new data
-      setChapters(chapters.map(chapter => 
-        chapter.id === updatedChapter.id ? updatedChapter : chapter
-      ));
-      
-      // Update selected chapter
-      setSelectedChapter(updatedChapter);
+      // Make sure the response contains actual chapter data
+      if (updatedChapter && updatedChapter.id) {
+        // Update chapters state with new data
+        setChapters(chapters.map(chapter => 
+          chapter.id === updatedChapter.id ? updatedChapter : chapter
+        ));
+        
+        // Update selected chapter
+        setSelectedChapter(updatedChapter);
+      } else {
+        // If the response doesn't contain chapter data, fetch it again
+        console.log('Response does not contain chapter data, fetching again...');
+        const refreshedChapter = await getChapter(chapterId);
+        if (refreshedChapter) {
+          setSelectedChapter(refreshedChapter);
+          setChapters(chapters.map(chapter => 
+            chapter.id === refreshedChapter.id ? refreshedChapter : chapter
+          ));
+        }
+      }
     } catch (err) {
       console.error('Error switching summary:', err);
       // Revert to the previous index if there was an error

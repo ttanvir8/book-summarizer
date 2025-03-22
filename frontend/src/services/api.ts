@@ -67,15 +67,15 @@ Make logical sections for each reasonable section of the summary and use bold an
   {
     id: 'concise',
     title: 'Concise',
-    text: `Create a concise summary of the following chapter that covers only the most essential points:
+    text: `Create a summary of the following chapter with these guidelines:
 
-Focus on:
-- The core argument or thesis
-- Key supporting evidence
-- Main conclusions
+Main Ideas: Include only the main arguments. Add one key supporting point for each argument if it’s critical to the thesis.
+Short and Simple: Keep it concise. Skip extra details, examples, or evidence unless absolutely necessary.
+Clear: Arrange the arguments in a logical order with basic transitions.
+True to the Text: Stick to the author’s main points and tone. Don’t interpret or add ideas.
+Avoid: Extra examples, minor points, or repetition.
 
-Use simple language and short paragraphs.
-Limit to about 1/5 the length of the original text.`
+Make logical sections for each reasonable section of the summary and use bold and italic formatting of text to emphasis important parts for better understandability and readability.`
   },
   {
     id: 'custom',
