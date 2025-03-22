@@ -16,7 +16,9 @@ def process_pdf_chapters(reader) -> dict:
     """
     try:
         bookmarks = reader.outline
-        pages = reader.pages
+        
+        # Get total pages without loading all pages at once
+        total_pages = len(reader.pages)
         
         # Debug the bookmark structure
         print("Analyzing bookmark structure...")
@@ -24,14 +26,14 @@ def process_pdf_chapters(reader) -> dict:
         
         document_metadata = {
             "document_info": {
-                "total_pages": len(pages),
+                "total_pages": total_pages,
                 "processed_date": datetime.now().isoformat(),
             },
             "chapters": []
         }
         
-        # Process bookmarks as a tree structure
-        document_metadata["chapters"] = process_bookmark_tree(reader, bookmarks, pages)
+        # Process bookmarks as a tree structure - pass reader instead of pages list
+        document_metadata["chapters"] = process_bookmark_tree(reader, bookmarks, None, 0)
         
         return document_metadata
         
@@ -70,7 +72,7 @@ def process_bookmark_tree(reader, bookmarks, pages, level=0):
     Args:
         reader: PDF reader object
         bookmarks: List of bookmarks or a single bookmark
-        pages: List of pages in the PDF
+        pages: List of pages in the PDF (can be None to save memory)
         level: Current nesting level
         
     Returns:
@@ -112,7 +114,7 @@ def process_bookmark_tree(reader, bookmarks, pages, level=0):
                         # Convert to 0-based indexing for extraction
                         start_page_idx = chapter['start_page'] - 1
                         end_page_idx = chapter['end_page']
-                        chapter['text'] = extract_text_from_page_range(reader, pages, start_page_idx, end_page_idx)
+                        chapter['text'] = extract_text_from_page_range(reader, start_page_idx, end_page_idx)
                         chapter['word_count'] = len(chapter['text'].split())
                 
                 # Add the children to the chapter
@@ -179,7 +181,7 @@ def create_chapter_data(reader, bookmark, pages, level, next_bookmark=None, has_
                 
         # If no end page, use the last page
         if end_page is None:
-            end_page = len(pages)
+            end_page = len(reader.pages)
             
         chapter = {
             "title": bookmark.title,
@@ -193,8 +195,8 @@ def create_chapter_data(reader, bookmark, pages, level, next_bookmark=None, has_
         # when we process the children. For now, just set a flag to indicate this.
         if not has_children:
             # Extract text if we have valid page numbers
-            if start_page >= 0 and start_page < len(pages):
-                chapter["text"] = extract_text_from_page_range(reader, pages, start_page, min(end_page, len(pages)))
+            if start_page >= 0 and start_page < len(reader.pages):
+                chapter["text"] = extract_text_from_page_range(reader, start_page, min(end_page, len(reader.pages)))
                 chapter["word_count"] = len(chapter["text"].split())
             
         return chapter
@@ -208,13 +210,12 @@ def create_chapter_data(reader, bookmark, pages, level, next_bookmark=None, has_
             "level": level
         }
 
-def extract_text_from_page_range(reader, pages, start_page, end_page):
+def extract_text_from_page_range(reader, start_page, end_page):
     """
-    Extract text from a range of pages
+    Extract text from a range of pages with memory optimization
     
     Args:
         reader: PDF reader object
-        pages: List of pages
         start_page: Start page index (0-based)
         end_page: End page index (0-based)
         
@@ -225,21 +226,35 @@ def extract_text_from_page_range(reader, pages, start_page, end_page):
     
     # Ensure valid page range
     start = max(0, start_page)
-    end = min(len(pages), end_page)
+    end = min(len(reader.pages), end_page)
     
-    # Extract text from each page
-    for i in range(start, end):
-        # Add page number with clear formatting
-        text += f"\n( Page {i + 1} )\n\n"
-        try:
-            # Extract text from the current page
-            page_text = pages[i].extract_text()
-            if page_text:
-                text += normalize_text(page_text)
-            # Add spacing after page
-            text += "\n\n"
-        except Exception as e:
-            print(f"Error extracting text from page {i+1}: {str(e)}")
+    # Set a chunk size to process pages in batches
+    chunk_size = 5  # Process 5 pages at a time
+    
+    # Extract text from each page in chunks
+    for chunk_start in range(start, end, chunk_size):
+        chunk_end = min(chunk_start + chunk_size, end)
+        
+        for i in range(chunk_start, chunk_end):
+            # Add page number with clear formatting
+            text += f"\n( Page {i + 1} )\n\n"
+            try:
+                # Extract text from the current page - access directly from reader to avoid storing all pages
+                page = reader.pages[i]
+                page_text = page.extract_text()
+                if page_text:
+                    text += normalize_text(page_text)
+                # Add spacing after page
+                text += "\n\n"
+                
+                # Explicitly delete page object to free memory
+                del page
+            except Exception as e:
+                print(f"Error extracting text from page {i+1}: {str(e)}")
+                
+        # Force garbage collection after each chunk
+        import gc
+        gc.collect()
     
     return text
 

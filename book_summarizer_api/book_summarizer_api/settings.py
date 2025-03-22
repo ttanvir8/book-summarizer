@@ -39,6 +39,15 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,book-summar
 if 'RENDER_EXTERNAL_HOSTNAME' in os.environ:
     ALLOWED_HOSTS.append(os.environ.get('RENDER_EXTERNAL_HOSTNAME'))
 
+# Render.com deployment settings
+# Set timeout values higher for long-running operations
+GUNICORN_TIMEOUT = int(os.environ.get('GUNICORN_TIMEOUT', 180))  # 3 minutes timeout
+MAX_FILE_SIZE = int(os.environ.get('MAX_FILE_SIZE', 20 * 1024 * 1024))  # 20MB limit for PDFs
+
+# Memory optimization settings
+DATA_UPLOAD_MAX_MEMORY_SIZE = MAX_FILE_SIZE
+FILE_UPLOAD_MAX_MEMORY_SIZE = MAX_FILE_SIZE
+
 # Database configuration
 # Use PostgreSQL in production (Render.com) and SQLite in development
 if 'DATABASE_URL' in os.environ:
