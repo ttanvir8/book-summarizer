@@ -161,27 +161,16 @@ def get_text_from_bookmark_to_bookmark(reader, pages, bookmark1, bookmark2):
 
 def process_pdf_chapters_logic(pdf_file):
     """Processes PDF chapters and returns structured data with nested bookmarks."""
-    try:
-        reader = pypdf.PdfReader(pdf_file)
-        # Use lower memory settings for PdfReader if available
-        if hasattr(reader, 'strict'):
-            reader.strict = False
-
-        # Use the nested_bookmarks processing function
-        document_metadata = process_pdf_chapters(reader)
+    reader = pypdf.PdfReader(pdf_file)
+    # Use the nested_bookmarks processing function
+    document_metadata = process_pdf_chapters(reader)
+    
+    if not document_metadata:
+        # Fallback to non-nested processing if nested processing fails
+        print("Nested bookmark processing failed, falling back to flat processing")
+        return process_pdf_chapters_flat(pdf_file)
         
-        if not document_metadata:
-            # Fallback to non-nested processing if nested processing fails
-            print("Nested bookmark processing failed, falling back to flat processing")
-            return process_pdf_chapters_flat(pdf_file)
-            
-        return document_metadata
-    except MemoryError:
-        print("Memory error encountered - try processing a smaller PDF file")
-        raise
-    except Exception as e:
-        print(f"Error processing PDF: {str(e)}")
-        raise
+    return document_metadata
 
 
 def process_pdf_chapters_flat(pdf_file):
@@ -293,26 +282,21 @@ class BookViewSet(viewsets.ModelViewSet):
         for the currently authenticated user.
         """
         user = self.request.user
-        if user.is_authenticated:
-            return Book.objects.filter(owner=user)
-        return Book.objects.none()
+        return Book.objects.filter(owner=user)
     
+    # Override the create method to handle the POST response properly
     def create(self, request, *args, **kwargs):
-        # Check file size before processing
-        max_size = getattr(settings, 'MAX_FILE_SIZE', 20 * 1024 * 1024)  # Default 20MB
-        
-        pdf_file = request.FILES.get('pdf_file')
-        if pdf_file and pdf_file.size > max_size:
-            return Response(
-                {"error": f"File too large. Maximum size is {max_size/1024/1024:.1f}MB"}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-            
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        
+        try:
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            # Use BookListSerializer for the response to avoid nested data issues
+            response_serializer = BookListSerializer(serializer.instance)
+            return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
     def perform_create(self, serializer):
         """Override perform_create to process uploaded PDF file and extract chapters."""
