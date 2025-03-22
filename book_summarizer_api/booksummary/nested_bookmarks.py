@@ -110,6 +110,13 @@ def process_bookmark_tree(reader, bookmarks, pages, level=0):
                     chapter['page_count'] = max(0, chapter['end_page'] - chapter['start_page'] + 1)
                     
                     # Re-extract the text with the adjusted page range
+                    # Check if we need to swap page numbers
+                    if chapter['start_page'] > chapter['end_page']:
+                        temp = chapter['start_page']
+                        chapter['start_page'] = chapter['end_page']
+                        chapter['end_page'] = temp
+                        chapter['page_count'] = max(0, chapter['end_page'] - chapter['start_page'] + 1)
+                    
                     if chapter['start_page'] <= chapter['end_page']:
                         # Convert to 0-based indexing for extraction
                         start_page_idx = chapter['start_page'] - 1
@@ -191,12 +198,22 @@ def create_chapter_data(reader, bookmark, pages, level, next_bookmark=None, has_
             "level": level,
         }
         
+        # If start_page is greater than end_page, swap them
+        if chapter["start_page"] > chapter["end_page"]:
+            temp = chapter["start_page"]
+            chapter["start_page"] = chapter["end_page"]
+            chapter["end_page"] = temp
+            chapter["page_count"] = max(0, chapter["end_page"] - chapter["start_page"] + 1)
+        
         # If this is a parent bookmark with children, we'll adjust its end page later
         # when we process the children. For now, just set a flag to indicate this.
         if not has_children:
             # Extract text if we have valid page numbers
-            if start_page >= 0 and start_page < len(reader.pages):
-                chapter["text"] = extract_text_from_page_range(reader, start_page, min(end_page, len(reader.pages)))
+            # Use the (potentially swapped) page numbers from the chapter dictionary
+            start_page_idx = chapter["start_page"] - 1  # Convert back to 0-based for extraction
+            end_page_idx = chapter["end_page"]
+            if start_page_idx >= 0 and start_page_idx < len(reader.pages):
+                chapter["text"] = extract_text_from_page_range(reader, start_page_idx, min(end_page_idx, len(reader.pages)))
                 chapter["word_count"] = len(chapter["text"].split())
             
         return chapter
@@ -223,6 +240,10 @@ def extract_text_from_page_range(reader, start_page, end_page):
         str: Extracted text
     """
     text = ""
+    
+    # Ensure valid page range and swap if start > end
+    if start_page > end_page:
+        start_page, end_page = end_page, start_page
     
     # Ensure valid page range
     start = max(0, start_page)

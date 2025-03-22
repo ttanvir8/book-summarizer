@@ -140,22 +140,45 @@ def normalize_text(raw_text):
 
 
 def get_text_from_bookmark_to_bookmark(reader, pages, bookmark1, bookmark2):
+    """
+    Extract text between two bookmarks, handling cases where page numbers might be inverted.
+    
+    Args:
+        reader: PDF reader object
+        pages: List of pages in the PDF
+        bookmark1: First bookmark
+        bookmark2: Second bookmark
+        
+    Returns:
+        str: Extracted text from the page range
+    """
     page_number1 = reader.get_destination_page_number(bookmark1)
     page_number2 = reader.get_destination_page_number(bookmark2)
 
-    start = min(page_number1, page_number2)
-    end = max(page_number1, page_number2)
+    # Ensure valid page range and swap if necessary
+    if page_number1 > page_number2:
+        page_number1, page_number2 = page_number2, page_number1
+    
+    start = max(0, page_number1)
+    end = min(page_number2, len(pages))
 
     text = ""
-    start_page_number = min(page_number1, page_number2)
+    # Use the start page number for display
+    current_page_number = start
     for page in pages[start:end]:
         # Add page number with clear formatting
-        text += f"\n( Page {start_page_number + 1} )\n\n"
-        # Extract text from the current page
-        text += normalize_text(page.extract_text())
-        # Add spacing after page
-        text += "\n\n"
-        start_page_number += 1
+        text += f"\n( Page {current_page_number + 1} )\n\n"
+        try:
+            # Extract text from the current page
+            page_text = page.extract_text()
+            if page_text:
+                text += normalize_text(page_text)
+            # Add spacing after page
+            text += "\n\n"
+        except Exception as e:
+            print(f"Error extracting text from page {current_page_number + 1}: {str(e)}")
+        current_page_number += 1
+        
     return text
 
 
@@ -194,14 +217,19 @@ def process_pdf_chapters_flat(pdf_file):
                 start_page = reader.get_destination_page_number(bookmarks[i])
                 end_page = reader.get_destination_page_number(bookmarks[i+1])
 
+                # Get chapter text using the improved function
                 chapter_text = get_text_from_bookmark_to_bookmark(reader, pages, bookmarks[i], bookmarks[i+1])
+
+                # Ensure start_page <= end_page for metadata
+                if start_page > end_page:
+                    start_page, end_page = end_page, start_page
 
                 chapter_data = {
                     "chapter_number": i + 1,
                     "title": bookmarks[i].title,
                     "text": chapter_text,
                     "metadata": {
-                        "start_page": start_page + 1,
+                        "start_page": start_page + 1,  # Convert to 1-based page numbers
                         "end_page": end_page,
                         "page_count": end_page - start_page,
                         "word_count": len(chapter_text.split())
