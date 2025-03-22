@@ -6,10 +6,12 @@ const LandingPage: React.FC = () => {
     <div className="container my-5">
       <div className="row">
         <div className="col-md-8 offset-md-2 text-center">
-          <h1 className="display-4 mb-4">Book Summarizer</h1>
+          <h1 className="display-4 mb-4">Project Orion</h1>
           <p className="lead mb-5">
-            Transform your reading experience with our AI-powered book summary tool.
-            Upload your PDFs and get instant, comprehensive chapter summaries.
+            Knowledge is compression. 
+            Project Orion will will help you compress all the information you encounter everyday 
+            in compressed and more manageable form. But currently you can only use it to compress (summarize) your books.
+            In the future, you will be able to compress all the information you encounter everyday from web and your personal notes in compressed and more manageable form.
           </p>
           
           <div className="row mb-5">
@@ -24,8 +26,8 @@ const LandingPage: React.FC = () => {
             <div className="col-md-4">
               <div className="card h-100 border-0 shadow-sm">
                 <div className="card-body text-center p-4">
-                  <h3 className="h5 mb-3">Extract Chapters</h3>
-                  <p className="card-text">Our system automatically extracts chapters from your books.</p>
+                  <h3 className="h5 mb-3">Compression Rate</h3>
+                  <p className="card-text">Change your compression rate in two mode currently detailed and concise</p>
                 </div>
               </div>
             </div>

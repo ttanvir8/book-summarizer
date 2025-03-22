@@ -38,11 +38,22 @@ module.exports = {
   devServer: {
     historyApiFallback: true,
     port: 3000,
-    proxy: [
-      {
-        context: ['/api'],
-        target: 'http://localhost:8000'
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        secure: false,
+        changeOrigin: true
+      },
+      '/accounts': {
+        target: 'http://localhost:8000',
+        secure: false,
+        changeOrigin: true
+      },
+      '/auth': {
+        target: 'http://localhost:8000',
+        secure: false,
+        changeOrigin: true
       }
-    ]
+    }
   }
 }; 
