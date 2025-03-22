@@ -1,5 +1,4 @@
 # Mine
-views.py
 /media/book_pdfs/
 *.pdf
 auth_settings.py

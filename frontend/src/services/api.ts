@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = 'http://127.0.0.1:8000/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000/api';
+const AUTH_URL = process.env.REACT_APP_AUTH_URL || 'http://localhost:8000';
 
 // Set up axios defaults for authentication
 const token = localStorage.getItem('token');
@@ -90,7 +91,7 @@ Limit to about 1/5 the length of the original text.`
 export interface Chapter {
   id: number;
   book: number;
-  chapter_number: number;
+  chapter_number: string;
   title: string;
   text: string;
   summary: string | null;
@@ -101,16 +102,18 @@ export interface Chapter {
   compression_ratio: number | null;
   summaries: ChapterSummary[];
   active_summary: ChapterSummary | null;
+  level?: number;
+  parent?: number | null;
 }
 
 // Authentication API calls
 export const loginWithGoogle = () => {
-  window.location.href = 'http://localhost:8000/accounts/google/login/';
+  window.location.href = `${AUTH_URL}/accounts/google/login/`;
 };
 
 export const getAuthToken = async () => {
   try {
-    const response = await axios.post('http://localhost:8000/auth/token/', {}, {
+    const response = await axios.post(`${AUTH_URL}/auth/token/`, {}, {
       withCredentials: true
     });
     return response.data;
@@ -127,8 +130,15 @@ export const getAllBooks = async (): Promise<Book[]> => {
 };
 
 export const getBook = async (id: number): Promise<Book> => {
-  const response = await axios.get(`${API_URL}/books/${id}/`);
-  return response.data;
+  try {
+    console.log(`Fetching book with ID: ${id}`);
+    const response = await axios.get(`${API_URL}/books/${id}/`);
+    console.log('Book API response data:', JSON.stringify(response.data));
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching book:', error);
+    throw error;
+  }
 };
 
 export const uploadBook = async (formData: FormData): Promise<Book> => {
@@ -151,10 +161,21 @@ export const deleteBook = async (id: number): Promise<void> => {
 };
 
 // Chapter API calls
-export const getChapters = async (): Promise<Chapter[]> => {
-  const response = await axios.get(`${API_URL}/chapters/`);
-  console.log('API response for getChapters:', response.data);
-  return response.data;
+export const getChapters = async (bookId?: number): Promise<Chapter[]> => {
+  try {
+    console.log(`Fetching chapters${bookId ? ` for book ${bookId}` : ''}`);
+    const response = await axios.get(`${API_URL}/chapters/${bookId ? `?book=${bookId}` : ''}`);
+    console.log(`Received ${response.data.length} chapters`);
+    if (response.data.length > 0) {
+      console.log('First chapter sample:', JSON.stringify(response.data[0]));
+    } else {
+      console.log('No chapters returned from API');
+    }
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching chapters:', error);
+    throw error;
+  }
 };
 
 export const getChapter = async (id: number): Promise<Chapter> => {
@@ -163,13 +184,13 @@ export const getChapter = async (id: number): Promise<Chapter> => {
   return response.data;
 };
 
-export const summarizeChapter = async (bookId: number, chapterNumber: number, promptId?: string): Promise<Chapter> => {
+export const summarizeChapter = async (bookId: number, chapterNumber: string | number, promptId?: string): Promise<ChapterSummary> => {
   let requestData = {};
   
   if (promptId) {
     const selectedPrompt = availablePrompts.find(p => p.id === promptId);
-    if (selectedPrompt) {
-      requestData = { prompt_template: selectedPrompt.text };
+    if (selectedPrompt && selectedPrompt.text) {
+      requestData = { custom_prompt: selectedPrompt.text };
     }
   }
   
@@ -180,17 +201,18 @@ export const summarizeChapter = async (bookId: number, chapterNumber: number, pr
     requestData
   );
   console.log('API response for summarizeChapter:', response.data);
+  
   return response.data;
 };
 
 // New API functions for working with multiple summaries
-export const regenerateSummary = async (bookId: number, chapterNumber: number, promptId?: string): Promise<Chapter> => {
+export const regenerateSummary = async (bookId: number, chapterNumber: string | number, promptId?: string): Promise<Chapter> => {
   let requestData = {};
   
   if (promptId) {
     const selectedPrompt = availablePrompts.find(p => p.id === promptId);
-    if (selectedPrompt) {
-      requestData = { prompt_template: selectedPrompt.text };
+    if (selectedPrompt && selectedPrompt.text) {
+      requestData = { custom_prompt: selectedPrompt.text };
     }
   }
   
@@ -201,7 +223,10 @@ export const regenerateSummary = async (bookId: number, chapterNumber: number, p
     requestData
   );
   console.log('API response for regenerateSummary:', response.data);
-  return response.data;
+  
+  // Response contains a ChapterSummary, we need to fetch the updated chapter
+  const chapterId = response.data.chapter;
+  return await getChapter(chapterId);
 };
 
 export const getChapterSummaries = async (chapterId: number): Promise<ChapterSummary[]> => {

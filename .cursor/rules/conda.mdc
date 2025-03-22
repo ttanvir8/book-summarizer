@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+remember the backend django app needs to use the environement 3b1b so activate the conda environment before doing any backend python terminal commmand

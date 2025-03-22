@@ -11,9 +11,9 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 import os
-
 from pathlib import Path
 from .auth_settings import *
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,23 +23,35 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-d3y%c6#0s79w(0&4^pfezpaspqqz5u5-plx+2w9y%7cnd6_^wb"
+SECRET_KEY = os.environ.get('SECRET_KEY', "django-insecure-d3y%c6#0s79w(0&4^pfezpaspqqz5u5-plx+2w9y%7cnd6_^wb")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+if 'RENDER_EXTERNAL_HOSTNAME' in os.environ:
+    ALLOWED_HOSTS.append(os.environ.get('RENDER_EXTERNAL_HOSTNAME'))
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'book_summarizer',
-        'USER': 'tanvirkhan',
-        'PASSWORD': '',
-        'HOST': 'localhost',
-        'PORT': '5432',
+# Database configuration
+# Use PostgreSQL in production (Render.com) and SQLite in development
+if 'DATABASE_URL' in os.environ:
+    DATABASES = {
+        'default': dj_database_url.config(
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'book_summarizer',
+            'USER': 'tanvirkhan',
+            'PASSWORD': '',
+            'HOST': 'localhost',
+            'PORT': '5432',
+        }
+    }
 
 # Original PostgreSQL configuration (commented out temporarily)
 # DATABASES = {
@@ -62,7 +74,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'django.contrib.staticfiles', # <-- Only ONE of this line should exist
+    'django.contrib.staticfiles', 
     'django.contrib.sites',  # Required for allauth
     'rest_framework',
     'rest_framework.authtoken',  # Add Token authentication
@@ -74,10 +86,12 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',  # Google provider
     'dj_rest_auth',  # REST authentication
     'dj_rest_auth.registration',  # REST registration
+    'whitenoise.runserver_nostatic',  # Add whitenoise for static files
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # Add whitenoise middleware
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",  # Add cors middleware (before CommonMiddleware)
     "django.middleware.common.CommonMiddleware",
@@ -89,11 +103,12 @@ MIDDLEWARE = [
 ]
 
 # CORS settings
-CORS_ALLOW_ALL_ORIGINS = True  # For development only, restrict this in production
-# Or specify allowed origins:
-# CORS_ALLOWED_ORIGINS = [
-#     "http://localhost:3000",
-# ]
+CORS_ALLOWED_ORIGINS = os.environ.get(
+    'CORS_ALLOWED_ORIGINS', 
+    'http://localhost:3000,http://127.0.0.1:3000'
+).split(',')
+
+CORS_ALLOW_ALL_ORIGINS = False
 
 ROOT_URLCONF = "book_summarizer_api.urls"
 
@@ -145,6 +160,8 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -193,9 +210,8 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 # AllAuth settings
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = False
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'password1*', 'password2*']
+ACCOUNT_LOGIN_METHODS = {'email'}
 ACCOUNT_EMAIL_VERIFICATION = 'none'  # Change to 'mandatory' in production
 
 # Rest-Auth settings

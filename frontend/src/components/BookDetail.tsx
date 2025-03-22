@@ -12,6 +12,7 @@ import {
   getChapterSummaries,
   setActiveSummary,
   availablePrompts,
+  getChapter,
   Book, 
   Chapter,
   ChapterSummary,
@@ -31,7 +32,7 @@ const BookDetail: React.FC = () => {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [summarizing, setSummarizing] = useState<Record<number, boolean>>({});
+  const [summarizing, setSummarizing] = useState<Record<string, boolean>>({});
   const [viewMode, setViewMode] = useState<'content' | 'summary'>('summary');
   const [selectedChapter, setSelectedChapter] = useState<Chapter | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
@@ -40,6 +41,7 @@ const BookDetail: React.FC = () => {
   const [selectedPrompt, setSelectedPrompt] = useState<string>('default');
   const [customPromptText, setCustomPromptText] = useState<string>('');
   const [showCustomPromptModal, setShowCustomPromptModal] = useState<boolean>(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Set default prompt on component mount
   useEffect(() => {
@@ -54,26 +56,58 @@ const BookDetail: React.FC = () => {
     const fetchBookDetails = async () => {
       try {
         setLoading(true);
-        if (!bookId) return;
+        if (!bookId) {
+          console.error('No bookId provided');
+          setError('Book ID is missing');
+          setLoading(false);
+          return;
+        }
         
-        const bookData = await getBook(parseInt(bookId));
+        console.log(`Starting to fetch details for book ID: ${bookId}`);
+        const bookIdInt = parseInt(bookId);
+        
+        // Fetch book data
+        const bookData = await getBook(bookIdInt);
+        console.log('Successfully fetched book data:', bookData);
         setBook(bookData);
         
-        const allChapters = await getChapters();
-        const bookChapters = allChapters
-          .filter(chapter => chapter.book === parseInt(bookId))
-          .sort((a, b) => a.chapter_number - b.chapter_number); // Sort chapters by chapter_number
-        setChapters(bookChapters);
+        // Get chapters for this book
+        const bookChapters = await getChapters(bookIdInt);
+        console.log(`Received ${bookChapters.length} chapters for book ID: ${bookIdInt}`);
+        
+        // Sort chapters by chapter number
+        const sortedChapters = bookChapters.sort((a, b) => {
+          // Sort by chapter_number, handling hierarchical numbers like 1.1, 1.2, etc.
+          const aParts = String(a.chapter_number).split('.').map(Number);
+          const bParts = String(b.chapter_number).split('.').map(Number);
+          
+          // Compare each part
+          for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+            const aVal = i < aParts.length ? aParts[i] : 0;
+            const bVal = i < bParts.length ? bParts[i] : 0;
+            if (aVal !== bVal) {
+              return aVal - bVal;
+            }
+          }
+          return 0;
+        });
+        
+        console.log(`Sorted ${sortedChapters.length} chapters for book ID: ${bookIdInt}`);
+        setChapters(sortedChapters);
         
         // Set the first chapter as selected by default
-        if (bookChapters.length > 0) {
-          setSelectedChapter(bookChapters[0]);
+        if (sortedChapters.length > 0) {
+          console.log('Setting first chapter as selected:', sortedChapters[0]);
+          setSelectedChapter(sortedChapters[0]);
+        } else {
+          console.warn('No chapters found for this book');
         }
         
         setError(null);
-      } catch (err) {
-        setError('Failed to fetch book details. Please try again later.');
-        console.error('Error fetching book details:', err);
+      } catch (err: any) {
+        const errorMessage = err.response?.data?.error || err.message || 'Failed to fetch book details';
+        console.error('Error in fetchBookDetails:', errorMessage, err);
+        setError(`Failed to fetch book details: ${errorMessage}`);
       } finally {
         setLoading(false);
       }
@@ -159,15 +193,78 @@ const BookDetail: React.FC = () => {
     }
   }, [selectedChapter]);
 
-  const handleSummarize = async (chapterNumber: number) => {
+  // Function to display success message and clear it after a timeout
+  const showSuccessMessage = (message: string) => {
+    setSuccessMessage(message);
+    // Clear any existing error when showing success
+    setError(null);
+    
+    // Auto-clear after 3 seconds
+    setTimeout(() => {
+      setSuccessMessage(null);
+    }, 3000);
+  };
+
+  // Function to clear error message
+  const clearError = () => {
+    setError(null);
+  };
+
+  const handleSummarize = async (chapterNumber: string) => {
     if (!bookId) return;
     
     try {
       setSummarizing({ ...summarizing, [chapterNumber]: true });
-      const updatedChapter = await summarizeChapter(parseInt(bookId), chapterNumber, selectedPrompt);
+      clearError(); // Clear any previous errors
       
-      // Log the response from the API to debug
-      console.log('API response from summarize:', updatedChapter);
+      // Generate the summary
+      const summaryResponse = await summarizeChapter(parseInt(bookId), chapterNumber, selectedPrompt);
+      console.log('API response from summarize:', summaryResponse);
+      
+      // Find the current chapter
+      const currentChapter = chapters.find(c => c.chapter_number === chapterNumber);
+      if (!currentChapter) {
+        throw new Error('Chapter not found');
+      }
+      
+      // Create an updated chapter object with the new summary
+      const updatedChapter: Chapter = {
+        ...currentChapter,
+        active_summary: summaryResponse,
+        summaries: [summaryResponse, ...(currentChapter.summaries || [])]
+      };
+      
+      // Update chapters state with new data
+      setChapters(chapters.map(chapter => 
+        chapter.id === currentChapter.id ? updatedChapter : chapter
+      ));
+      
+      // Update selectedChapter if this is the one that was summarized
+      if (selectedChapter?.id === currentChapter.id) {
+        console.log('Updating selected chapter with new summary');
+        setSelectedChapter(updatedChapter);
+        setAvailableSummaries([summaryResponse, ...(currentChapter.summaries || [])]);
+        setCurrentSummaryIndex(0); // Set to the newest summary
+        showSuccessMessage('Summary generated successfully!');
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to generate summary. Please try again later.';
+      setError(errorMessage);
+      console.error('Error generating summary:', err);
+    } finally {
+      setSummarizing({ ...summarizing, [chapterNumber]: false });
+    }
+  };
+
+  const handleRegenerateSummary = async (chapterNumber: string) => {
+    if (!bookId) return;
+    
+    try {
+      setSummarizing({ ...summarizing, [chapterNumber]: true });
+      clearError(); // Clear any previous errors
+      
+      // chapterNumber is already a string
+      const updatedChapter = await regenerateSummary(parseInt(bookId), chapterNumber, selectedPrompt);
       
       // Update chapters state with new data
       const updatedChapters = chapters.map(chapter => 
@@ -175,55 +272,21 @@ const BookDetail: React.FC = () => {
       );
       setChapters(updatedChapters);
       
-      // Update selectedChapter if this is the one that was summarized
-      if (selectedChapter?.id === updatedChapter.id) {
-        console.log('Updating selected chapter with new data including compression ratio:', updatedChapter.compression_ratio);
-        
-        // Immediately update available summaries with the new data
-        if (updatedChapter.summaries && updatedChapter.summaries.length > 0) {
-          setAvailableSummaries(updatedChapter.summaries);
-          setCurrentSummaryIndex(0); // Set to the first (newest) summary
-        }
-        
-        // Update the selected chapter
-        setSelectedChapter(updatedChapter);
-      } else {
-        // If we're summarizing a different chapter, fetch the latest summaries for the current chapter
-        await fetchSummaries(selectedChapter?.id);
-      }
-    } catch (err) {
-      setError('Failed to generate summary. Please try again later.');
-      console.error('Error generating summary:', err);
-    } finally {
-      setSummarizing({ ...summarizing, [chapterNumber]: false });
-    }
-  };
-
-  const handleRegenerateSummary = async (chapterNumber: number) => {
-    if (!bookId) return;
-    
-    try {
-      setSummarizing({ ...summarizing, [chapterNumber]: true });
-      const updatedChapter = await regenerateSummary(parseInt(bookId), chapterNumber, selectedPrompt);
-      
-      // Update chapters state with new data
-      setChapters(chapters.map(chapter => 
-        chapter.id === updatedChapter.id ? updatedChapter : chapter
-      ));
-      
       // Update selectedChapter if this is the one that was regenerated
       if (selectedChapter?.id === updatedChapter.id) {
         // Directly update the availableSummaries with the new summary data from the API response
         if (updatedChapter.summaries && updatedChapter.summaries.length > 0) {
           setAvailableSummaries(updatedChapter.summaries);
           setCurrentSummaryIndex(0); // Set to the first (newest) summary
+          showSuccessMessage('Summary regenerated successfully!');
         }
         
         // Then update the selected chapter
         setSelectedChapter(updatedChapter);
       }
-    } catch (err) {
-      setError('Failed to regenerate summary. Please try again later.');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error || 'Failed to regenerate summary. Please try again later.';
+      setError(errorMessage);
       console.error('Error regenerating summary:', err);
     } finally {
       setSummarizing({ ...summarizing, [chapterNumber]: false });
@@ -276,6 +339,49 @@ const BookDetail: React.FC = () => {
       }
     }
   };
+
+  // Add debug logging for content view
+  useEffect(() => {
+    if (viewMode === 'content' && selectedChapter) {
+      console.log('Content view mode - Selected chapter:', {
+        id: selectedChapter.id,
+        chapter_number: selectedChapter.chapter_number,
+        text_length: selectedChapter.text?.length || 0,
+        text_preview: selectedChapter.text?.substring(0, 100),
+        has_text: Boolean(selectedChapter.text)
+      });
+      
+      // If the chapter text is missing, fetch the full chapter
+      if (!selectedChapter.text) {
+        console.log('Chapter text is missing, fetching full chapter data...');
+        const fetchFullChapter = async () => {
+          try {
+            // Show the loading state
+            setLoading(true);
+            // Get the full chapter data
+            const fullChapter = await getChapter(selectedChapter.id);
+            console.log('Fetched full chapter data:', fullChapter);
+            
+            // Update the selected chapter with full text
+            setSelectedChapter(fullChapter);
+            
+            // Also update the chapter in the chapters list
+            setChapters(prevChapters => 
+              prevChapters.map(ch => ch.id === fullChapter.id ? fullChapter : ch)
+            );
+            
+            setLoading(false);
+          } catch (err) {
+            console.error('Error fetching full chapter:', err);
+            setError('Failed to load chapter content. Please try again.');
+            setLoading(false);
+          }
+        };
+        
+        fetchFullChapter();
+      }
+    }
+  }, [viewMode, selectedChapter]);
 
   // Helper to get current summary text and info
   const getCurrentSummary = () => {
@@ -343,26 +449,44 @@ const BookDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="d-flex justify-content-center">
-        <div className="spinner-border" role="status">
+      <div className="d-flex justify-content-center align-items-center vh-100">
+        <div className="spinner-border text-primary" role="status">
           <span className="visually-hidden">Loading...</span>
         </div>
+        <span className="ms-2">Loading book details...</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="alert alert-danger" role="alert">
-        {error}
+      <div className="d-flex flex-column justify-content-center align-items-center vh-100">
+        <div className="alert alert-danger alert-dismissible fade show" role="alert">
+          <strong>Error:</strong> {error}
+          <button type="button" className="btn-close" onClick={clearError} aria-label="Close"></button>
+        </div>
+        <button 
+          className="btn btn-primary mt-3"
+          onClick={() => window.location.reload()}
+        >
+          Retry
+        </button>
+        <Link to="/" className="btn btn-secondary mt-2">
+          Return to Books
+        </Link>
       </div>
     );
   }
 
   if (!book) {
     return (
-      <div className="alert alert-warning" role="alert">
-        Book not found.
+      <div className="d-flex flex-column justify-content-center align-items-center vh-100">
+        <div className="alert alert-warning" role="alert">
+          Book not found or could not be loaded.
+        </div>
+        <Link to="/" className="btn btn-primary mt-3">
+          Return to Books
+        </Link>
       </div>
     );
   }
@@ -385,6 +509,21 @@ const BookDetail: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Error and Success Messages */}
+      {error && (
+        <div className="alert alert-danger alert-dismissible fade show m-2" role="alert">
+          {error}
+          <button type="button" className="btn-close" onClick={clearError} aria-label="Close"></button>
+        </div>
+      )}
+      
+      {successMessage && (
+        <div className="alert alert-success alert-dismissible fade show m-2" role="alert">
+          {successMessage}
+          <button type="button" className="btn-close" onClick={() => setSuccessMessage(null)} aria-label="Close"></button>
+        </div>
+      )}
 
       {/* Custom Prompt Modal */}
       {showCustomPromptModal && (
@@ -443,19 +582,34 @@ const BookDetail: React.FC = () => {
                 {isSidebarCollapsed ? '→' : '←'}
               </button>
             </div>
-            <div className="list-group">
-              {chapters.map((chapter) => (
-                <button
-                  key={chapter.id}
-                  className={`list-group-item list-group-item-action ${selectedChapter?.id === chapter.id ? 'active' : ''}`}
-                  onClick={() => setSelectedChapter(chapter)}
-                >
-                  <div className="d-flex justify-content-between align-items-center">
-                    <div>Chapter {chapter.chapter_number}: {chapter.title || `Untitled Chapter ${chapter.chapter_number}`}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
+            
+            {chapters.length === 0 ? (
+              <div className="alert alert-info">
+                No chapters found for this book.
+              </div>
+            ) : (
+              <div className="list-group">
+                {chapters.map((chapter) => (
+                  <button
+                    key={chapter.id}
+                    className={`list-group-item list-group-item-action ${selectedChapter?.id === chapter.id ? 'active' : ''}`}
+                    onClick={() => setSelectedChapter(chapter)}
+                  >
+                    <div className="d-flex justify-content-between align-items-center">
+                      <div className="text-start">
+                        <span className="fw-bold">Chapter {chapter.chapter_number}:</span>{' '}
+                        {chapter.title || `Untitled Chapter ${chapter.chapter_number}`}
+                      </div>
+                      {chapter.active_summary && (
+                        <span className="badge bg-success rounded-pill">
+                          <small>Summarized</small>
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Main content area */}
@@ -491,7 +645,16 @@ const BookDetail: React.FC = () => {
 
                 {viewMode === 'content' ? (
                   <div className="content-preview border rounded p-3">
-                    <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{selectedChapter.text}</pre>
+                    {loading ? (
+                      <div className="text-center p-5">
+                        <div className="spinner-border text-primary" role="status">
+                          <span className="visually-hidden">Loading chapter content...</span>
+                        </div>
+                        <p className="mt-2">Loading chapter content...</p>
+                      </div>
+                    ) : (
+                      <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>{selectedChapter.text || 'No content available for this chapter.'}</pre>
+                    )}
                   </div>
                 ) : (
                   <div>
