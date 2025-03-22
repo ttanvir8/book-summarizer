@@ -211,34 +211,74 @@ def process_pdf_chapters_flat(pdf_file):
         "chapters": []
     }
 
-    if bookmarks:
-        for i in range(len(bookmarks) - 1):
-            try:
-                start_page = reader.get_destination_page_number(bookmarks[i])
-                end_page = reader.get_destination_page_number(bookmarks[i+1])
-
-                # Get chapter text using the improved function
-                chapter_text = get_text_from_bookmark_to_bookmark(reader, pages, bookmarks[i], bookmarks[i+1])
-
-                # Ensure start_page <= end_page for metadata
-                if start_page > end_page:
-                    start_page, end_page = end_page, start_page
-
-                chapter_data = {
-                    "chapter_number": i + 1,
-                    "title": bookmarks[i].title,
-                    "text": chapter_text,
-                    "metadata": {
-                        "start_page": start_page + 1,  # Convert to 1-based page numbers
-                        "end_page": end_page,
-                        "page_count": end_page - start_page,
-                        "word_count": len(chapter_text.split())
-                    }
+    # If no bookmarks, chunk the book into 20-page sections
+    if not bookmarks or len(bookmarks) <= 1:  # Need at least 2 bookmarks to create a chapter
+        print("No sufficient bookmarks found in flat processor, chunking book into 20-page sections...")
+        chunk_size = 20
+        total_pages = len(pages)
+        
+        for i in range(0, total_pages, chunk_size):
+            chunk_start = i
+            chunk_end = min(i + chunk_size, total_pages)
+            
+            # Extract text for this chunk
+            chunk_text = ""
+            for page_idx in range(chunk_start, chunk_end):
+                # Add page number with clear formatting
+                chunk_text += f"\n( Page {page_idx + 1} )\n\n"
+                try:
+                    page_text = pages[page_idx].extract_text()
+                    if page_text:
+                        chunk_text += normalize_text(page_text)
+                    chunk_text += "\n\n"
+                except Exception as e:
+                    print(f"Error extracting text from page {page_idx + 1}: {str(e)}")
+            
+            chapter_data = {
+                "chapter_number": (i // chunk_size) + 1,
+                "title": f"Chunk {(i // chunk_size) + 1}",
+                "text": chunk_text,
+                "metadata": {
+                    "start_page": chunk_start + 1,  # Convert to 1-based page numbers
+                    "end_page": chunk_end,
+                    "page_count": chunk_end - chunk_start,
+                    "word_count": len(chunk_text.split())
                 }
-                document_metadata["chapters"].append(chapter_data)
+            }
+            document_metadata["chapters"].append(chapter_data)
+            
+        # Update total chapters count
+        document_metadata["document_info"]["total_chapters"] = len(document_metadata["chapters"])
+        return document_metadata
 
-            except Exception as e:
-                print(f"Error processing chapter {i + 1}: {str(e)}")
+    # Process normally if there are bookmarks
+    for i in range(len(bookmarks) - 1):
+        try:
+            start_page = reader.get_destination_page_number(bookmarks[i])
+            end_page = reader.get_destination_page_number(bookmarks[i+1])
+
+            # Get chapter text using the improved function
+            chapter_text = get_text_from_bookmark_to_bookmark(reader, pages, bookmarks[i], bookmarks[i+1])
+
+            # Ensure start_page <= end_page for metadata
+            if start_page > end_page:
+                start_page, end_page = end_page, start_page
+
+            chapter_data = {
+                "chapter_number": i + 1,
+                "title": bookmarks[i].title,
+                "text": chapter_text,
+                "metadata": {
+                    "start_page": start_page + 1,  # Convert to 1-based page numbers
+                    "end_page": end_page,
+                    "page_count": end_page - start_page,
+                    "word_count": len(chapter_text.split())
+                }
+            }
+            document_metadata["chapters"].append(chapter_data)
+
+        except Exception as e:
+            print(f"Error processing chapter {i + 1}: {str(e)}")
 
     return document_metadata
 

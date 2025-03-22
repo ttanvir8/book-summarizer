@@ -20,10 +20,6 @@ def process_pdf_chapters(reader) -> dict:
         # Get total pages without loading all pages at once
         total_pages = len(reader.pages)
         
-        # Debug the bookmark structure
-        print("Analyzing bookmark structure...")
-        analyze_bookmark_structure(bookmarks)
-        
         document_metadata = {
             "document_info": {
                 "total_pages": total_pages,
@@ -31,6 +27,16 @@ def process_pdf_chapters(reader) -> dict:
             },
             "chapters": []
         }
+        
+        # Check if there are bookmarks
+        if not bookmarks or len(bookmarks) == 0:
+            print("No bookmarks found, chunking book into 20-page sections...")
+            document_metadata["chapters"] = chunk_book_by_pages(reader, 20)  # Chunk size of 20 pages
+            return document_metadata
+        
+        # Debug the bookmark structure
+        print("Analyzing bookmark structure...")
+        analyze_bookmark_structure(bookmarks)
         
         # Process bookmarks as a tree structure - pass reader instead of pages list
         document_metadata["chapters"] = process_bookmark_tree(reader, bookmarks, None, 0)
@@ -319,6 +325,41 @@ def normalize_text(raw_text):
     normalized_text = re.sub(r"\b(\w+)'s\b", r"\1 is", normalized_text)
     
     return normalized_text
+
+def chunk_book_by_pages(reader, chunk_size=20):
+    """
+    Chunk a book into sections of specified number of pages when no bookmarks are present
+    
+    Args:
+        reader: PDF reader object
+        chunk_size: Number of pages per chunk (default: 20)
+        
+    Returns:
+        list: List of chapter data for each chunk
+    """
+    total_pages = len(reader.pages)
+    chunks = []
+    
+    # Create chunks of the specified size
+    for chunk_start in range(0, total_pages, chunk_size):
+        chunk_end = min(chunk_start + chunk_size, total_pages)
+        
+        # Create chapter data for this chunk
+        chapter = {
+            "title": f"Chunk {(chunk_start // chunk_size) + 1}",
+            "start_page": chunk_start + 1,  # Convert to 1-based page numbers
+            "end_page": chunk_end,
+            "page_count": chunk_end - chunk_start,
+            "level": 0,
+        }
+        
+        # Extract text for this chunk
+        chapter["text"] = extract_text_from_page_range(reader, chunk_start, chunk_end)
+        chapter["word_count"] = len(chapter["text"].split())
+        
+        chunks.append(chapter)
+    
+    return chunks
 
 if __name__ == "__main__":
     book_path = "books/prin.pdf"
