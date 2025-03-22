@@ -11,7 +11,10 @@ const LandingPage: React.FC = () => {
             Knowledge is compression. 
             Project Orion will will help you compress all the information you encounter everyday 
             in compressed and more manageable form. But currently you can only use it to compress (summarize) your books.
-            In the future, you will be able to compress all the information you encounter everyday from web and your personal notes in compressed and more manageable form.
+            In the future, you will be able to compress every single information you encounter everyday from web and your 
+            personal notes in compressed and more manageable form. Your ultimate knowledge base refined for you with all the neuances of you
+            , your personal assistant 
+            that will be second brain predicting your knowledge and information needs allowing you to be most productive and efficient.
           </p>
           
           <div className="row mb-5">
