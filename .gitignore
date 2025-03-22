@@ -2,6 +2,8 @@
 /media/book_pdfs/
 *.pdf
 auth_settings.py
+.env.example
+.env
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
