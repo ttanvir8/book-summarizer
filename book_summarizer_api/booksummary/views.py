@@ -1,5 +1,6 @@
 from django.shortcuts import render, redirect
 from django.conf import settings
+import os
 
 # Create your views here.
 
@@ -559,4 +560,5 @@ class ChapterSummaryViewSet(viewsets.ModelViewSet):
 
 def auth_callback(request):
     # Redirect to your frontend with the session token
-    return redirect(f'http://localhost:3000/auth/callback')
+    frontend_url = os.environ.get('FRONTEND_URL', 'https://knowledgeq-git-main-tanvirkkhans-projects.vercel.app/auth/callback')
+    return redirect(frontend_url)

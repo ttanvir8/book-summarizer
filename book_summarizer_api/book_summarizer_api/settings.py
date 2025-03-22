@@ -35,7 +35,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', "django-insecure-d3y%c6#0s79w(0&4^pfez
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,book-summarizer-ur5b.onrender.com').split(',')
 if 'RENDER_EXTERNAL_HOSTNAME' in os.environ:
     ALLOWED_HOSTS.append(os.environ.get('RENDER_EXTERNAL_HOSTNAME'))
 
@@ -112,7 +112,7 @@ MIDDLEWARE = [
 # CORS settings
 CORS_ALLOWED_ORIGINS = os.environ.get(
     'CORS_ALLOWED_ORIGINS', 
-    'http://localhost:3000,http://127.0.0.1:3000'
+    'http://localhost:3000,http://127.0.0.1:3000,https://knowledgeq-git-main-tanvirkkhans-projects.vercel.app'
 ).split(',')
 
 CORS_ALLOW_ALL_ORIGINS = False

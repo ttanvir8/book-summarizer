@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000/api';
-const AUTH_URL = process.env.REACT_APP_AUTH_URL || 'http://localhost:8000';
+const API_URL = process.env.REACT_APP_API_URL || 'https://book-summarizer-ur5b.onrender.com/api';
+const AUTH_URL = process.env.REACT_APP_AUTH_URL || 'https://book-summarizer-ur5b.onrender.com';
 
 // Set up axios defaults for authentication
 const token = localStorage.getItem('token');

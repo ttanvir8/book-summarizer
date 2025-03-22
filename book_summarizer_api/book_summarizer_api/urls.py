@@ -25,6 +25,7 @@ from django.views.generic import RedirectView
 from django.http import JsonResponse, HttpResponseRedirect
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+import os
 
 # Add this custom callback view function
 @api_view(['GET'])
@@ -37,7 +38,7 @@ def auth_callback(request):
         
         # Redirect to frontend with token in query params
         # This way the frontend can grab the token directly without additional API calls
-        frontend_url = 'http://localhost:3000/auth/callback'
+        frontend_url = os.environ.get('FRONTEND_URL', 'https://knowledgeq-git-main-tanvirkkhans-projects.vercel.app/auth/callback')
         redirect_url = f'{frontend_url}?token={token.key}'
         return HttpResponseRedirect(redirect_url)
         

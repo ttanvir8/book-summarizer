@@ -4,11 +4,12 @@ import { useAuth } from '../context/AuthContext';
 
 const GoogleLogin: React.FC = () => {
   const { login } = useAuth();
+  const AUTH_URL = process.env.REACT_APP_AUTH_URL || 'https://book-summarizer-ur5b.onrender.com';
 
   const handleGoogleLogin = async () => {
     try {
       // Redirect to the Google OAuth login URL
-      window.location.href = 'http://localhost:8000/accounts/google/login/';
+      window.location.href = `${AUTH_URL}/accounts/google/login/`;
     } catch (error) {
       console.error('Google login error:', error);
     }
