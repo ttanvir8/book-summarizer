@@ -4,5 +4,5 @@
   ],
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "framework": "webpack"
+  "framework": "create-react-app"
 } 
