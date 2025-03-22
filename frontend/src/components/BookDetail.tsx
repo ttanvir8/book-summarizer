@@ -305,6 +305,11 @@ const BookDetail: React.FC = () => {
     
     try {
       const summaryId = availableSummaries[newIndex].id;
+      
+      // Update current index directly first for immediate feedback
+      setCurrentSummaryIndex(newIndex);
+      
+      // Then make the API call to set active summary
       const updatedChapter = await setActiveSummary(selectedChapter.id, summaryId);
       
       // Update chapters state with new data
@@ -314,15 +319,11 @@ const BookDetail: React.FC = () => {
       
       // Update selected chapter
       setSelectedChapter(updatedChapter);
-      
-      // Fetch the latest summaries to ensure everything is in sync
-      await fetchSummaries(updatedChapter.id);
-      
-      // Update current index directly as well for immediate feedback
-      setCurrentSummaryIndex(newIndex);
     } catch (err) {
-      setError('Failed to switch summary. Please try again later.');
       console.error('Error switching summary:', err);
+      // Revert to the previous index if there was an error
+      setCurrentSummaryIndex(currentSummaryIndex);
+      setError('Failed to switch summary. Please try again later.');
     }
   };
 

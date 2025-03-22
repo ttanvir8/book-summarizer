@@ -51,22 +51,18 @@ export const availablePrompts: Prompt[] = [
   {
     id: 'default',
     title: 'Default (Detailed)',
-    text: `Create a detailed summary of the following chapter that adheres to these principles:
+    text: `Create a detailed but concise summary of the following chapter that adheres to these principles:
 
-Relevant: Give me all the main arguments, analogies, processes, tools, examples, and supporting evidence from the source. Prioritize ideas central to the author's thesis. And make it detailed engough so that each arguments are discussed in enough comprehensive details.
-
+Relevant: Give me all the main arguments, analogies, processes, tools, examples, and supporting evidence from the source. Prioritize ideas central to the author's thesis..
 Concise: Avoid repetition, redundancy, and filler. Present ideas in a densely informative way (e.g., explain an analogy once with clarity, not multiple times). But, Give each argument's main paragraph enough details to get the point across.
-
-Coherent: Structure the summary logically (e.g., mirror the chapter's flow or group related arguments). Use transitions to show connections between ideas. Make it readable and have logical flow of sentence.
-
+Coherent: Structure the summary logically (e.g., mirror the chapter's flow or group related arguments). Use transitions to show connections between ideas. Make it readable and have a logical flow of sentences.
 Faithful: Do not add, interpret, or omit content. Preserve the author's tone, emphasis, and proportional focus (e.g., if the author spends 30% of the chapter on a process, reflect that weighting).
-
 Avoid:
 Paraphrasing that loses nuance (e.g., oversimplifying a multi-step process).
 Listing disconnected facts without contextualizing their role in the argument.
-
 Structure:
-Make logical sections for each reasonable sections of the summary and use bold and italic formatting of text to emphasis important parts for better understandability and readability.`
+Make logical sections for each reasonable section of the summary and use bold and italic formatting of text to emphasis important parts for better understandability and readability.
+`
   },
   {
     id: 'concise',
