@@ -39,8 +39,6 @@ const BookDetail: React.FC = () => {
   const [availableSummaries, setAvailableSummaries] = useState<ChapterSummary[]>([]);
   const [currentSummaryIndex, setCurrentSummaryIndex] = useState<number>(0);
   const [selectedPrompt, setSelectedPrompt] = useState<string>('default');
-  const [customPromptText, setCustomPromptText] = useState<string>('');
-  const [showCustomPromptModal, setShowCustomPromptModal] = useState<boolean>(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Set default prompt on component mount
@@ -428,46 +426,10 @@ const BookDetail: React.FC = () => {
     return null;
   };
 
-  // Handle prompt selection change
+  // Handle prompt selection change - simplified without custom prompt
   const handlePromptChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newPromptId = e.target.value;
     setSelectedPrompt(newPromptId);
-    
-    // If custom prompt is selected, show the modal
-    if (newPromptId === 'custom') {
-      // Initialize with existing custom prompt text if available
-      const customPrompt = availablePrompts.find(p => p.id === 'custom');
-      if (customPrompt && customPrompt.text) {
-        setCustomPromptText(customPrompt.text);
-      } else {
-        // Initialize with default prompt as a starting point
-        const defaultPrompt = availablePrompts.find(p => p.id === 'default');
-        if (defaultPrompt) {
-          setCustomPromptText(defaultPrompt.text);
-        }
-      }
-      setShowCustomPromptModal(true);
-    }
-  };
-
-  // Save custom prompt
-  const handleSaveCustomPrompt = () => {
-    // Find the custom prompt in the available prompts array
-    const customPromptIndex = availablePrompts.findIndex(p => p.id === 'custom');
-    if (customPromptIndex !== -1) {
-      // Update the custom prompt text
-      availablePrompts[customPromptIndex].text = customPromptText;
-    }
-    setShowCustomPromptModal(false);
-  };
-
-  // Close custom prompt modal without saving
-  const handleCloseCustomPromptModal = () => {
-    // If no custom prompt text is set, revert to default prompt
-    if (!customPromptText.trim() && selectedPrompt === 'custom') {
-      setSelectedPrompt('default');
-    }
-    setShowCustomPromptModal(false);
   };
 
   if (loading) {
@@ -547,6 +509,64 @@ const BookDetail: React.FC = () => {
           <button type="button" className="btn-close" onClick={() => setSuccessMessage(null)} aria-label="Close"></button>
         </div>
       )}
+
+      {/* Main content */}
+      <div className="flex-grow-1 d-flex" style={{ minHeight: 0 }}>
+        {isSidebarCollapsed && (
+          <button 
+            className="expand-button"
+            onClick={() => setIsSidebarCollapsed(false)}
+          >
+            →
+          </button>
+        )}
+        <Split 
+          sizes={isSidebarCollapsed ? [0, 100] : [20, 80]} 
+          minSize={0} 
+          gutterSize={8}
+          snapOffset={100}
+          className="split-flex"
+        >
+          {/* Sidebar */}
+          <div className="bg-light border-end p-2 overflow-auto h-100">
+            <div className="d-flex justify-content-between align-items-center mb-3">
+              <h5 className="mb-0">Contents</h5>
+              <button 
+                className="btn btn-sm btn-outline-secondary" 
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              >
+                {isSidebarCollapsed ? '→' : '←'}
+              </button>
+            </div>
+            
+            {chapters.length === 0 ? (
+              <div className="alert alert-info">
+                No chapters found for this book.
+              </div>
+            ) : (
+              <div className="list-group">
+                {chapters.map((chapter) => (
+                  <button
+                    key={chapter.id}
+                    className={`list-group-item list-group-item-action ${selectedChapter?.id === chapter.id ? 'active' : ''}`}
+                    onClick={() => setSelectedChapter(chapter)}
+                  >
+                    <div className="d-flex justify-content-between align-items-center">
+                      <div className="text-start">
+                        <span className="fw-bold">Chapter {chapter.chapter_number}:</span>{' '}
+                        {chapter.title || `Untitled Chapter ${chapter.chapter_number}`}
+                      </div>
+                      {chapter.active_summary && (
+                        <span className="badge bg-success rounded-pill">
+                          <small>Summarized</small>
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Main content area */}
           <div className="px-2 py-3 overflow-auto h-100">
@@ -633,11 +653,13 @@ const BookDetail: React.FC = () => {
                           aria-label="Select prompt template"
                           title="Select a prompt style to control how the summary is generated"
                         >
-                          {availablePrompts.map(prompt => (
-                            <option key={prompt.id} value={prompt.id}>
-                              {prompt.title}
-                            </option>
-                          ))}
+                          {availablePrompts
+                            .filter(prompt => prompt.id !== 'custom') // Remove custom prompt from options
+                            .map(prompt => (
+                              <option key={prompt.id} value={prompt.id}>
+                                {prompt.title}
+                              </option>
+                            ))}
                         </select>
 
                         {selectedChapter.summary ? (
